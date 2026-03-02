@@ -1,6 +1,11 @@
 <template>
     <div>
+        <p v-if="value.length === 0 && isReadOnly" class="text-xs text-gray-500">
+            {{ __('statamic-filter-builder::fieldtypes.filter_builder.no_filters') }}
+        </p>
+
         <sortable-list
+            v-if="value.length > 0"
             :model-value="value"
             :vertical="true"
             item-class="filter-builder-sortable-item"
@@ -31,7 +36,7 @@
             </div>
         </sortable-list>
 
-        <div v-if="!isReadOnly" class="flex">
+        <div v-if="!isReadOnly" class="flex items-center gap-2">
             <Combobox
                 class="w-52"
                 :placeholder="__('statamic-filter-builder::fieldtypes.filter_builder.add_filter')"
@@ -39,11 +44,20 @@
                 :model-value="null"
                 @update:model-value="onAdd"
             />
+            <button
+                v-if="value.length > 1"
+                type="button"
+                class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+                @click="toggleCollapseAll"
+            >
+                {{ allCollapsed ? __('Expand All') : __('Collapse All') }}
+            </button>
         </div>
     </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Fieldtype, SortableList } from '@statamic/cms';
 import { Combobox } from '@statamic/cms/ui';
 import FilterItem from './FilterItem.vue';
@@ -63,14 +77,28 @@ const {
     removeItem,
     collapseItem,
     expandItem,
+    collapseAll,
+    expandAll,
     itemPreviews,
     itemFieldPath,
     itemMetaPath,
 } = useFields(props, { update, updateMeta });
 
+const allCollapsed = computed(() => {
+    return props.value.length > 0 && props.value.every(item => collapsed.value.includes(item.id));
+});
+
 function onAdd(handle) {
     if (handle) {
         addItem('field', handle);
+    }
+}
+
+function toggleCollapseAll() {
+    if (allCollapsed.value) {
+        expandAll(props.value);
+    } else {
+        collapseAll(props.value);
     }
 }
 </script>

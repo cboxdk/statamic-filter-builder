@@ -3,6 +3,7 @@
 namespace Cbox\FilterBuilder\Scopes;
 
 use Cbox\FilterBuilder\VariableParser;
+use Statamic\Facades\Blink;
 use Statamic\Facades\Cascade;
 use Statamic\Facades\Collection;
 use Statamic\Fields\Field;
@@ -100,23 +101,53 @@ class FilterBuilder extends Scope
      */
     protected function fields(array $collections): \Illuminate\Support\Collection
     {
-        /** @phpstan-ignore return.type */
-        return collect([
-            'id' => new Field('id', [
-                'display' => 'ID',
-                'type' => 'text',
-            ]),
-        ])->merge(collect(Arr::wrap($collections))
-            ->flatMap(function (string $collection) {
+        $key = 'filter-builder.scope-fields.'.implode('|', $collections);
+
+        if (Blink::has($key)) {
+            /** @phpstan-ignore return.type */
+            return Blink::get($key);
+        }
+
+        $collectionList = collect(Arr::wrap($collections));
+
+        $groups = $collectionList
+            ->mapWithKeys(function (string $collection): array {
                 $col = Collection::findByHandle($collection);
 
-                return $col ? $col->entryBlueprints() : collect();
-            })
-            ->flatMap(function ($blueprint) {
-                return $blueprint
-                    ->fields() /** @phpstan-ignore method.nonObject */
-                    ->all()
-                    ->filter->isFilterable();
-            }));
+                $fields = $col
+                    ? $col->entryBlueprints()
+                        ->flatMap(function ($blueprint) {
+                            return $blueprint
+                                ->fields()
+                                ->all()
+                                ->filter->isFilterable();
+                        })
+                    : collect();
+
+                return [$collection => $fields];
+            });
+
+        // Only include fields common to all collections
+        $handles = $groups
+            ->flatMap(fn ($fields) => $fields->keys())
+            ->unique();
+        foreach ($groups as $fields) {
+            $handles = $handles->intersect($fields->keys());
+        }
+
+        $fields = $groups
+            ->flatMap(fn ($fields) => $fields)
+            ->only($handles)
+            ->merge([
+                'id' => new Field('id', [
+                    'display' => 'ID',
+                    'type' => 'text',
+                ]),
+            ]);
+
+        Blink::put($key, $fields);
+
+        /** @phpstan-ignore return.type */
+        return $fields;
     }
 }

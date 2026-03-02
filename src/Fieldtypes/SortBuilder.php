@@ -58,7 +58,7 @@ class SortBuilder extends Fieldtype
      */
     public function augment($value): ?string
     {
-        if (! $value) {
+        if (empty($value)) {
             return null;
         }
 

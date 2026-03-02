@@ -7,6 +7,7 @@ export function useFields(props, { update, updateMeta }) {
 
     const collapsed = ref(props.value.map(item => item.id));
     const previews = ref(props.meta.previews || {});
+    const itemCache = ref({});
 
     const mode = computed(() => props.config.mode || 'config');
 
@@ -31,11 +32,17 @@ export function useFields(props, { update, updateMeta }) {
         ])));
     });
 
+    const usedHandles = computed(() => {
+        return new Set(props.value.map(item => item.handle));
+    });
+
     const fieldsOptions = computed(() => {
-        return props.meta.fields.map(field => ({
-            value: field.handle,
-            label: field.display,
-        }));
+        return props.meta.fields
+            .filter(field => !usedHandles.value.has(field.handle))
+            .map(field => ({
+                value: field.handle,
+                label: field.display,
+            }));
     });
 
     const itemFields = computed(() => {
@@ -99,6 +106,14 @@ export function useFields(props, { update, updateMeta }) {
         }
     }
 
+    function collapseAll(items) {
+        collapsed.value = items.map(item => item.id);
+    }
+
+    function expandAll() {
+        collapsed.value = [];
+    }
+
     function itemPreviews(id) {
         return previews.value[id];
     }
@@ -121,15 +136,42 @@ export function useFields(props, { update, updateMeta }) {
         }
     });
 
+    function cacheKey(cols) {
+        return JSON.stringify([...(cols || [])].sort());
+    }
+
     watch(collections, (newVal, oldVal) => {
         if (JSON.stringify(newVal) === JSON.stringify(oldVal)) {
             return;
         }
-        update([]);
-        updateMeta({
-            ...props.meta,
-            existing: {},
-        });
+
+        // Cache current items before clearing
+        const oldKey = cacheKey(oldVal);
+        if (props.value.length > 0) {
+            itemCache.value[oldKey] = {
+                items: [...props.value],
+                existing: { ...props.meta.existing },
+            };
+        }
+
+        // Restore cached items if available for the new collection set
+        const newKey = cacheKey(newVal);
+        const cached = itemCache.value[newKey];
+        if (cached) {
+            update(cached.items);
+            updateMeta({
+                ...props.meta,
+                existing: cached.existing,
+            });
+            delete itemCache.value[newKey];
+        } else {
+            update([]);
+            updateMeta({
+                ...props.meta,
+                existing: {},
+            });
+        }
+
         loadCollectionsMeta(newVal);
     });
 
@@ -147,6 +189,8 @@ export function useFields(props, { update, updateMeta }) {
         removeItem,
         collapseItem,
         expandItem,
+        collapseAll,
+        expandAll,
         itemPreviews,
         updateItemPreviews,
         itemFieldPath,
