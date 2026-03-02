@@ -76,8 +76,7 @@ function onAdd(handle) {
 </script>
 
 <style>
-.sort_builder-fieldtype .replicator-set-body.publish-fields {
-    padding: 0.5rem;
+.sort_builder-fieldtype .publish-fields {
     gap: 0.5rem;
 }
 </style>
