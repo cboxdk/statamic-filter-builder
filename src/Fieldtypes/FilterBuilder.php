@@ -224,6 +224,8 @@ class FilterBuilder extends Fieldtype
         $fieldItems['variables'] = [
             'type' => 'list',
             'display' => __('statamic-filter-builder::fieldtypes.filter_builder.variables'),
+            'instructions' => __('statamic-filter-builder::fieldtypes.filter_builder.variables_instructions'),
+            'placeholder' => '{{ request:param }}',
             'width' => 50,
             'replicator_preview' => true,
             'validate' => [
