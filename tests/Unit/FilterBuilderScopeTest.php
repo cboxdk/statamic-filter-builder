@@ -2,11 +2,7 @@
 
 use Statamic\Facades;
 
-uses(Tests\TestCase::class);
-
 beforeEach(function () {
-    app('statamic.scopes')->put('filter_builder', 'Tv2regionerne\\StatamicFilterBuilder\\Scopes\\FilterBuilder');
-
     $collection = tap(Facades\Collection::make()
         ->handle('pages'))
         ->save();
@@ -26,6 +22,24 @@ beforeEach(function () {
                     'max_items' => 5,
                 ],
             ],
+            [
+                'handle' => 'date',
+                'field' => [
+                    'type' => 'date',
+                ],
+            ],
+            [
+                'handle' => 'number',
+                'field' => [
+                    'type' => 'integer',
+                ],
+            ],
+            [
+                'handle' => 'featured',
+                'field' => [
+                    'type' => 'toggle',
+                ],
+            ],
         ],
     ])->save();
 
@@ -35,6 +49,9 @@ beforeEach(function () {
         ->merge([
             'title' => 'One',
             'entries' => ['One'],
+            'date' => '2024-01-15',
+            'number' => 10,
+            'featured' => true,
         ])
         ->save();
 
@@ -44,6 +61,9 @@ beforeEach(function () {
         ->merge([
             'title' => 'Two',
             'entries' => ['One', 'Two'],
+            'date' => '2024-06-15',
+            'number' => 20,
+            'featured' => false,
         ])
         ->save();
 
@@ -53,6 +73,9 @@ beforeEach(function () {
         ->merge([
             'title' => 'Three',
             'entries' => ['One', 'Two', 'Three'],
+            'date' => '2024-12-15',
+            'number' => 30,
+            'featured' => true,
         ])
         ->save();
 });
@@ -69,7 +92,7 @@ it('filters text fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('One', $result);
 
@@ -84,7 +107,7 @@ it('filters text fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('ThreeTwo', $result);
 
@@ -99,7 +122,7 @@ it('filters text fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('OneTwo', $result);
 
@@ -114,7 +137,7 @@ it('filters text fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('', $result);
 });
@@ -133,7 +156,7 @@ it('filters fields with values from the cascade', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('One', $result);
 });
@@ -150,9 +173,7 @@ it('filters relationship fields', function () {
                 ],
             ],
         ],
-    ]);
-
-    //dd(Facades\Entry::query()->whereJsonContains('entries', ['One'])->get());
+    ], true);
 
     $this->assertSame('Three', $result);
 
@@ -167,7 +188,7 @@ it('filters relationship fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('OneTwo', $result);
 
@@ -182,7 +203,7 @@ it('filters relationship fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('ThreeTwo', $result);
 
@@ -197,7 +218,117 @@ it('filters relationship fields', function () {
                 ],
             ],
         ],
-    ]);
+    ], true);
 
     $this->assertSame('', $result);
+});
+
+it('filters integer fields with comparison operators', function () {
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'number',
+                'values' => [
+                    'operator' => '>',
+                    'values' => [15],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('ThreeTwo', $result);
+
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'number',
+                'values' => [
+                    'operator' => '>=',
+                    'values' => [20],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('ThreeTwo', $result);
+
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'number',
+                'values' => [
+                    'operator' => '<',
+                    'values' => [20],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('One', $result);
+});
+
+it('filters toggle fields', function () {
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'featured',
+                'values' => [
+                    'operator' => '=',
+                    'values' => [true],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('OneThree', $result);
+});
+
+it('skips filters with empty values', function () {
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'title',
+                'values' => [
+                    'operator' => '=',
+                    'values' => [],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('OneThreeTwo', $result);
+});
+
+it('skips filters with non-existent field handle', function () {
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'nonexistent_field',
+                'values' => [
+                    'operator' => '=',
+                    'values' => ['test'],
+                    'variables' => [],
+                ],
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('OneThreeTwo', $result);
+});
+
+it('skips filters with malformed data', function () {
+    $result = (string) Facades\Antlers::parse('{{ collection:pages :filter_builder="params" }}{{ title }}{{ /collection:pages }}', [
+        'params' => [
+            [
+                'handle' => 'title',
+            ],
+        ],
+    ], true);
+
+    $this->assertSame('OneThreeTwo', $result);
 });

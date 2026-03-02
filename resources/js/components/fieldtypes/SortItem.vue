@@ -1,129 +1,78 @@
 <template>
-
-    <div class="replicator-set mb-2">
+    <div class="replicator-set mb-2" :class="{ 'border-red-400': hasError }">
         <div class="replicator-set-header p-0" :class="{ 'collapsed': collapsed }">
             <div class="flex items-center justify-between flex-1 px-2 py-1.5 replicator-set-header-inner cursor-pointer" @click="toggleCollapsed">
+                <DragHandle v-if="!readOnly" class="sort-builder-sortable-handle" />
                 <label class="text-xs whitespace-nowrap mr-2">
                     {{ field.display }}
                 </label>
                 <div v-show="collapsed" class="flex-1 min-w-0 w-1 pr-8">
                     <div v-html="previewText" class="help-block mb-0 whitespace-nowrap overflow-hidden text-ellipsis" />
                 </div>
-                <button class="flex group items-center" @click="$emit('removed')" :aria-label="__('statamic-filter-builder::fieldtypes.sort_builder.delete_sort')">
-                    <svg-icon name="micro/trash" class="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
+                <button v-if="!readOnly" class="flex group items-center" @click.stop="emit('removed')" :aria-label="__('statamic-filter-builder::fieldtypes.sort_builder.delete_sort')">
+                    <ui-icon name="trash" class="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
                 </button>
             </div>
         </div>
         <div class="replicator-set-body flex-1 publish-fields @container" v-show="!collapsed">
-            <set-field
-                v-for="field in fields"
-                :key="field.handle"
-                :field="field"
-                :value="values[field.handle]"
-                :meta="meta[field.handle]"
-                :parent-name="parentName"
-                :set-index="index"
-                :errors="fieldErrors(field)"
-                :field-path="fieldPath(field)"
-                :read-only="isReadOnly"
-                :show-field-previews="true"
-                v-show="showField(field, fieldPath(field))"
-                @updated="update(field.handle, $event)"
-                @meta-updated="updateMeta(field.handle, $event)"
-                @replicator-preview-updated="updatePreview(field.handle, $event)"
-            />
+            <PublishFieldsProvider
+                :fields="fields"
+                :field-path-prefix="fieldPath + '.values'"
+                :meta-path-prefix="metaPath"
+            >
+                <PublishFields />
+            </PublishFieldsProvider>
         </div>
     </div>
-
 </template>
 
-<script>
-import ManagesPreviewText from './Mixins/ManagesPreviewText.js';
+<script setup>
+import { computed } from 'vue';
+import { DragHandle, PublishFields, PublishFieldsProvider, injectPublishContext } from '@statamic/cms/ui';
 
-const { ValidatesFieldConditions } = FieldConditions;
+const emit = defineEmits(['collapsed', 'expanded', 'removed']);
 
-export default {
-
-    mixins: [
-        ValidatesFieldConditions,
-        ManagesPreviewText,
-    ],
-    
-    inject: ['storeName'],
-
-    props: {
-        sort: {},
-        field: {},
-        values: {},
-        fields: {},
-        meta: {},
-        previews: {},
-        errors: {},
-        fieldPathPrefix: {},
-        readOnly: {},
-        parentName: {},
-        index: {},
-        collapsed: {
-            default: false,
-        },
+const props = defineProps({
+    item: Object,
+    field: Object,
+    fields: Array,
+    fieldPath: String,
+    metaPath: String,
+    readOnly: Boolean,
+    index: Number,
+    collapsed: {
+        type: Boolean,
+        default: false,
     },
+    previews: Object,
+});
 
-    data() {
-        return {
-            fieldPreviews: this.previews,
-        }
-    },
+const { previews: containerPreviews, errors } = injectPublishContext();
 
-    methods: {
+const hasError = computed(() => {
+    if (!errors?.value) return false;
+    const prefix = props.fieldPath + '.values';
+    return Object.keys(errors.value).some(key => key.startsWith(prefix));
+});
 
-        update(handle, value) {
-            this.$emit('updated', {
-                ...this.values,
-                [handle]: value,
-            });
-        },
-
-        updateMeta(handle, meta) {
-            this.$emit('meta-updated', {
-                ...this.meta,
-                [handle]: meta,
-            });
-        },
-
-        updatePreview(handle, preview) {
-            this.$emit('previews-updated', this.fieldPreviews = {
-                ...this.fieldPreviews,
-                [handle]: preview,
-            });
-        },
-
-        toggleCollapsed() {
-            if (this.collapsed) {
-                this.expand();
-            } else {
-                this.collapse();
+const previewText = computed(() => {
+    const fieldPreviews = data_get(containerPreviews.value, props.fieldPath + '.values') || {};
+    return Object.entries(fieldPreviews)
+        .filter(([, value]) => {
+            if (['null', '[]', '{}', ''].includes(JSON.stringify(value))) return false;
+            return value;
+        })
+        .map(([, value]) => {
+            if (typeof value === 'string') return escapeHtml(value);
+            if (Array.isArray(value) && typeof value[0] === 'string') {
+                return escapeHtml(value.join(', '));
             }
-        },
+            return escapeHtml(JSON.stringify(value));
+        })
+        .join(' / ');
+});
 
-        collapse() {
-            this.$emit('collapsed');
-        },
-
-        expand() {
-            this.$emit('expanded');
-        },
-
-        fieldPath(field) {
-            return `${this.fieldPathPrefix}.values.${field.handle}`;
-        },
-
-        fieldErrors(field) {
-            const state = this.$store.state.publish[this.storeName];
-            if (! state) return [];
-            return state.errors[this.fieldPath(field)] || [];
-        },
-
-    },
-
-};
+function toggleCollapsed() {
+    emit(props.collapsed ? 'expanded' : 'collapsed');
+}
 </script>

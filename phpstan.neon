@@ -1,0 +1,24 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 9
+    paths:
+        - src
+    tmpDir: .phpstan-cache
+    stubFiles:
+        - stubs/statamic.stub
+    ignoreErrors:
+        - identifier: argument.templateType
+        -
+            identifier: return.type
+            path: src/Fieldtypes/Concerns/UsesFields.php
+        -
+            identifier: argument.type
+            path: src/Fieldtypes/Concerns/UsesFields.php
+        -
+            identifier: binaryOp.invalid
+            path: src/Fieldtypes/Concerns/UsesFields.php
+        -
+            identifier: method.nonObject
+            path: src/Fieldtypes/Concerns/UsesFields.php

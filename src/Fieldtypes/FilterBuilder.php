@@ -1,16 +1,19 @@
 <?php
 
-namespace Tv2regionerne\StatamicFilterBuilder\Fieldtypes;
+namespace Cbox\FilterBuilder\Fieldtypes;
 
+use Cbox\FilterBuilder\VariableParser;
 use Statamic\Fields\Field;
 use Statamic\Fields\Fields;
 use Statamic\Fields\Fieldtype;
-use Tv2regionerne\StatamicFilterBuilder\VariableParser;
 
 class FilterBuilder extends Fieldtype
 {
     use Concerns\UsesFields;
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     protected function configFieldItems(): array
     {
         return [
@@ -51,7 +54,7 @@ class FilterBuilder extends Fieldtype
         ];
     }
 
-    protected function getFieldFields(Field $field)
+    protected function getFieldFields(Field $field): Fields
     {
         $fieldItems = match ($field->type()) {
             'toggle' => [
@@ -67,7 +70,6 @@ class FilterBuilder extends Fieldtype
                     'replicator_preview' => true,
                 ],
                 'values' => [
-                    'display' => __('Value'),
                     'display' => __('statamic-filter-builder::fieldtypes.filter_builder.value'),
                     'type' => 'toggle',
                     'inline_display' => __('False'),
@@ -226,7 +228,8 @@ class FilterBuilder extends Fieldtype
             'replicator_preview' => true,
             'validate' => [
                 'nullable',
-                function ($attribute, $value, $fail) {
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    /** @var array<int, string> $value */
                     foreach ($value as $variable) {
                         if (! VariableParser::validate($variable)) {
                             $fail(__('statamic-filter-builder::validation.variables'));
@@ -236,12 +239,13 @@ class FilterBuilder extends Fieldtype
             ],
         ];
 
-        $fields = collect($fieldItems)->map(function ($field, $handle) {
+        $fields = collect($fieldItems)->map(function (array $field, string $handle): array {
             return compact('handle', 'field');
         });
 
         return new Fields(
             $fields,
+            /** @phpstan-ignore method.nonObject */
             $this->field()->parent(),
             $this->field()
         );

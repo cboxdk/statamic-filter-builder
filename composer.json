@@ -1,43 +1,76 @@
 {
-    "name": "tv2regionerne/statamic-filter-builder",
-    "scripts": {
-        "test": "./vendor/bin/pest"
+    "name": "cboxdk/statamic-filter-builder",
+    "description": "Build advanced collection filters and sort orders through the Statamic control panel.",
+    "license": "MIT",
+    "type": "statamic-addon",
+    "keywords": [
+        "statamic",
+        "addon",
+        "filter",
+        "sort",
+        "collection",
+        "fieldtype"
+    ],
+    "authors": [
+        {
+            "name": "Sylvester Damgaard",
+            "homepage": "https://github.com/cboxdk"
+        }
+    ],
+    "homepage": "https://github.com/cboxdk/statamic-filter-builder",
+    "support": {
+        "issues": "https://github.com/cboxdk/statamic-filter-builder/issues"
+    },
+    "require": {
+        "php": "^8.2",
+        "statamic/cms": "^6.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.27",
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
+    },
+    "conflict": {
+        "tv2regionerne/statamic-filter-builder": "*"
     },
     "autoload": {
         "psr-4": {
-            "Tv2regionerne\\StatamicFilterBuilder\\": "src"
+            "Cbox\\FilterBuilder\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\": "tests"
+            "Cbox\\FilterBuilder\\Tests\\": "tests"
         }
     },
     "extra": {
         "statamic": {
-            "name": "Statamic Filter Builder",
-            "description": "Allows you to build advanced collection filters through the control panel."
+            "name": "Filter Builder",
+            "description": "Build advanced collection filters and sort orders through the control panel."
         },
         "laravel": {
             "providers": [
-                "Tv2regionerne\\StatamicFilterBuilder\\ServiceProvider"
+                "Cbox\\FilterBuilder\\ServiceProvider"
             ]
         }
     },
-    "require": {
-        "statamic/cms": "^5.0"
-    },
-    "require-dev": {
-        "nunomaduro/collision": "^7.4",
-        "orchestra/testbench": "^8.3",
-        "pestphp/pest": "^2.4",
-        "pestphp/pest-plugin-watch": "^2.0",
-        "laravel/pint": "^1.13"
+    "scripts": {
+        "test": "./vendor/bin/pest",
+        "lint": "./vendor/bin/pint --test",
+        "fix": "./vendor/bin/pint",
+        "analyse": "./vendor/bin/phpstan analyse --no-progress",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@test"
+        ]
     },
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "pixelfear/composer-dist-plugin": true
+            "pixelfear/composer-dist-plugin": false
         }
     }
 }

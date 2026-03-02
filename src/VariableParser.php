@@ -1,6 +1,6 @@
 <?php
 
-namespace Tv2regionerne\StatamicFilterBuilder;
+namespace Cbox\FilterBuilder;
 
 use Carbon\Carbon;
 use Statamic\Facades\Antlers;
@@ -8,19 +8,23 @@ use Statamic\Support\Arr;
 
 class VariableParser
 {
-    public static function parse($variable, array $params = [])
+    /**
+     * @param  array<string, mixed>  $params
+     * @return list<mixed>|null
+     */
+    public static function parse(string $variable, array $params = []): ?array
     {
         if (! preg_match('/^\{\{.*}}$/', $variable)) {
-            return;
+            return null;
         }
 
         try {
-            $parsed = (string) Antlers::parse($variable, $params);
+            $parsed = (string) Antlers::parse($variable, $params, true);
             if ($parsed === '') {
-                return;
+                return null;
             }
         } catch (\Exception $e) {
-            return;
+            return null;
         }
 
         $decoded = json_decode($parsed, true);
@@ -30,15 +34,16 @@ class VariableParser
 
         // array is multidimensional. Don't return it to the query
         if (is_array($decoded) && count($decoded) !== count($decoded, COUNT_RECURSIVE)) {
-            return;
+            return null;
         }
 
+        /** @var list<mixed> */
         return Arr::map(Arr::wrap($decoded), function ($value) {
             return self::castValue($value);
         });
     }
 
-    public static function validate($variable)
+    public static function validate(string $variable): bool
     {
         if (! preg_match('/^\{\{.*}}$/', $variable)) {
             return false;
@@ -53,7 +58,7 @@ class VariableParser
         return true;
     }
 
-    protected static function castValue($value)
+    protected static function castValue(mixed $value): mixed
     {
         if ($value === 1 || $value === '1') {
             return true;
@@ -65,6 +70,13 @@ class VariableParser
 
         if (is_string($value) && Carbon::canBeCreatedFromFormat($value, 'Y-m-d H:i:s')) {
             return Carbon::createFromFormat('Y-m-d H:i:s', $value);
+        }
+
+        if (is_string($value) && Carbon::canBeCreatedFromFormat($value, 'Y-m-d')) {
+            /** @var Carbon */
+            $date = Carbon::createFromFormat('Y-m-d', $value);
+
+            return $date->startOfDay();
         }
 
         return $value;

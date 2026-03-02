@@ -1,53 +1,94 @@
-# Statamic Filter Builder Addon
-Elevate your Statamic experience with the Filter Builder addon, a robust tool for crafting dynamic data queries and enriching the content management capabilities of your website.
+# Filter Builder for Statamic
 
-This addon is perfect for developers and content managers who value precision and flexibility in displaying data within their site's architecture.
+A Statamic addon that lets you build dynamic collection filters and sort orders through the control panel. Define which fields can be filtered, set operators and values (including dynamic Antlers variables), and apply them to your collection tags — all without writing custom query scopes.
 
-## Installation via Composer
-The Statamic Filter Builder is installed using Composer:
+## The Problem
+
+You want editors to control which entries appear in a listing — filtering by category, date range, or status — without hardcoding query parameters in templates or writing custom scopes for every use case.
+
+## The Solution
+
+Add the `filter_builder` fieldtype to your blueprint, select which collections it applies to, and editors get a visual filter builder in the CP:
+
+```yaml
+- handle: filters
+  field:
+    type: filter_builder
+    mode: config
+    collections:
+      - articles
+```
+
+Then use it in your templates:
+
+```antlers
+{{ collection:articles :filter_builder="filters" }}
+    <h2>{{ title }}</h2>
+{{ /collection:articles }}
+```
+
+### Site Builder Pattern
+
+Use **field mode** to let editors choose both the collection and its filters dynamically — ideal for reusable listing components:
+
+```yaml
+- handle: collections
+  field:
+    type: collections
+- handle: filters
+  field:
+    type: filter_builder
+    mode: field
+    field: collections
+- handle: sorting
+  field:
+    type: sort_builder
+    mode: field
+    field: collections
+```
+
+```antlers
+{{ collection :from="collections" :filter_builder="filters" :sort="sorting" }}
+    <h2>{{ title }}</h2>
+{{ /collection }}
+```
+
+## Features
+
+- **Filter Builder fieldtype** — visual UI for building collection filters with field-aware operators
+- **Sort Builder fieldtype** — companion field for defining sort orders
+- **Dynamic variables** — reference Antlers cascade values in filter conditions
+- **Relationship support** — filter by entries, terms, and users fields
+- **Auto-scope injection** — automatically adds the query scope when `filter_builder` param is present
+
+## Quick Start
 
 ```bash
-composer require tv2regionerne/statamic-filter-builder
+composer require cboxdk/statamic-filter-builder
 ```
-## Empower Your Content with Dynamic Data Filtering
-By adding a filter builder field to your publishing forms, you unlock the ability to create sophisticated filtering rules that dynamically control what data is shown in each part of your site, such as specific sections or components.
 
-<img src="images/filter-builder.png" />
+No config files, no publishing, no migrations.
 
-## Field Configuration in Blueprint
+## Documentation
 
-When configuring the `Data Feed Filters` field within a blueprint you may select the collection to pick the fields from.
+See [DOCUMENTATION.md](DOCUMENTATION.md) for full setup guide, field type reference, template usage, and configuration options.
 
-### Configuration Options:
+## Requirements
 
-- **Collections**: Define the collections to pick the blueprint(s) from. The fields found in the blueprint(s) can be used to create the filters.
+- PHP 8.2+
+- Statamic 6.x
+- Laravel 12+
 
-<img src="images/fieldtype-setup.png" />
+## Development
 
-## Unleash Advanced Functionality with Antlers
-For those who seek advanced control, this addon leverages Antlers, Statamic's templating language, enabling you to inject dynamic variables directly into your queries. 
-
-Variables can be sourced from the Cascade of Antlers, allowing you to use elements like `{{ page.title }}` as a dynamic value in your filtering logic.
-
-### Advanced Use Case Example:
-Imagine you want to display articles that share the same location as the current page. 
-The Antlers code for this would be something like this:
-
-```antlers
-{{ page.locations | pluck('id') | to_json }}
+```bash
+composer check    # Pint + PHPStan level 9 + Pest
 ```
-By using `pluck('id')`, you ensure that the returned data is a flat array of IDs, not a complex structure. This array can then be used as a filter parameter to display a list of articles related by location, maintaining a clean and optimized data structure.
 
-Here’s how to apply this advanced filter within your template:
+## License
 
-```antlers
-{{ collection:articles :filter_builder="my_filter_builder_field_handle" }}
-    <!-- Articles that match the locations of the current page will be displayed -->
-{{ /collection:articles }}
+MIT
 
-```
-Note: the filter builder requires a query scope behind the scenes, so will not work alongside a query_scope parameter.
+## Credits
 
-You may combine the dynamic Filter Builder query with filter parameters.
-
-The Statamic Filter Builder addon is your pathway to creating a responsive and context-aware website, where content curation is as intelligent as it is effortless.
+Originally designed and developed by [Sylvester Damgaard](https://github.com/cboxdk) while working at [TV2 Regionerne](https://github.com/tv2regionerne/statamic-filter-builder). Now maintained and actively developed under [Cbox](https://github.com/cboxdk) with a full rewrite for Statamic 6, Laravel 12, and Vue 3.

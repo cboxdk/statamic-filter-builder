@@ -1,6 +1,6 @@
 <?php
 
-namespace Tv2regionerne\StatamicFilterBuilder\Fieldtypes;
+namespace Cbox\FilterBuilder\Fieldtypes;
 
 use Statamic\Fields\Field;
 use Statamic\Fields\Fields;
@@ -10,6 +10,9 @@ class SortBuilder extends Fieldtype
 {
     use Concerns\UsesFields;
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     protected function configFieldItems(): array
     {
         return [
@@ -50,18 +53,30 @@ class SortBuilder extends Fieldtype
         ];
     }
 
-    public function augment($value)
+    /**
+     * @param  array<int, array<string, mixed>>|null  $value
+     */
+    public function augment($value): ?string
     {
         if (! $value) {
-            return;
+            return null;
         }
 
         return collect($value)
-            ->map(fn ($sort) => $sort['handle'].':'.$sort['values']['direction'])
+            /** @phpstan-ignore offsetAccess.nonOffsetAccessible */
+            ->filter(fn (array $sort): bool => isset($sort['handle'], $sort['values']['direction']))
+            ->map(function (array $sort): string {
+                /** @var string $handle */
+                $handle = $sort['handle'];
+                /** @var array{direction: string} $values */
+                $values = $sort['values'];
+
+                return $handle.':'.$values['direction'];
+            })
             ->join('|');
     }
 
-    protected function getFieldFields(Field $field)
+    protected function getFieldFields(Field $field): Fields
     {
         $fieldItems = [
             'direction' => [
@@ -77,12 +92,13 @@ class SortBuilder extends Fieldtype
             ],
         ];
 
-        $fields = collect($fieldItems)->map(function ($field, $handle) {
+        $fields = collect($fieldItems)->map(function (array $field, string $handle): array {
             return compact('handle', 'field');
         });
 
         return new Fields(
             $fields,
+            /** @phpstan-ignore method.nonObject */
             $this->field()->parent(),
             $this->field()
         );

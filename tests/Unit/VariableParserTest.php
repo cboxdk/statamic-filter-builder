@@ -1,9 +1,7 @@
 <?php
 
 use Carbon\Carbon;
-use Tv2regionerne\StatamicFilterBuilder\VariableParser;
-
-uses(Tests\TestCase::class);
+use Cbox\FilterBuilder\VariableParser;
 
 it('parses string values', function () {
     $params = ['foo' => 'abcdefg'];
@@ -108,6 +106,20 @@ it('skips invalid values', function () {
     $parsed = VariableParser::parse('{{ test }} abcdefg');
     expect($parsed)
         ->toBeNull();
+});
+
+it('parses date-only values (Y-m-d format)', function () {
+    $params = ['foo' => '2024-06-15'];
+    $parsed = VariableParser::parse('{{ foo }}', $params);
+    expect($parsed)
+        ->toBeArray()
+        ->toHaveCount(1);
+    expect($parsed[0])
+        ->toBeInstanceOf(Carbon::class);
+    expect($parsed[0]->toDateString())
+        ->toEqual('2024-06-15');
+    expect($parsed[0]->toTimeString())
+        ->toEqual('00:00:00');
 });
 
 it('validates values', function () {

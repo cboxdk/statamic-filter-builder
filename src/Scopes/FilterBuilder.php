@@ -1,48 +1,81 @@
 <?php
 
-namespace Tv2regionerne\StatamicFilterBuilder\Scopes;
+namespace Cbox\FilterBuilder\Scopes;
 
+use Cbox\FilterBuilder\VariableParser;
 use Statamic\Facades\Cascade;
 use Statamic\Facades\Collection;
 use Statamic\Fields\Field;
 use Statamic\Query\Scopes\Scope;
 use Statamic\Support\Arr;
 use Statamic\Support\Str;
-use Tv2regionerne\StatamicFilterBuilder\VariableParser;
 
 class FilterBuilder extends Scope
 {
-    public function apply($query, $values)
+    /**
+     * @param  \Statamic\Contracts\Query\Builder  $query
+     * @param  array<string, mixed>  $values
+     */
+    public function apply($query, $values): void
     {
-        $fields = $this->fields(explode('|', $values['from']));
+        $from = $values['from'] ?? '';
+
+        if (! is_string($from) || $from === '') {
+            return;
+        }
+
+        $fields = $this->fields(explode('|', $from));
         $filters = $values['filter_builder'] ?? [];
 
-        foreach ($filters as $filter) {
-            $handle = $filter['handle'];
-            $operator = $filter['values']['operator'];
-            $values = $filter['values']['values'] ?? [];
-            $variables = $filter['values']['variables'];
+        if (! is_array($filters)) {
+            return;
+        }
 
+        /** @var array<int, array<string, mixed>> $filters */
+        foreach ($filters as $filter) {
+            /** @phpstan-ignore offsetAccess.nonOffsetAccessible */
+            if (! isset($filter['handle'], $filter['values']['operator'])) {
+                continue;
+            }
+
+            /** @var string $handle */
+            $handle = $filter['handle'];
+
+            if (! $fields->has($handle)) {
+                continue;
+            }
+
+            /** @var array{operator: string, values?: array<int, mixed>, variables?: array<int, string>} $filterValues_ */
+            $filterValues_ = $filter['values'];
+            $operator = $filterValues_['operator'];
+            /** @var array<int, mixed> $filterValues */
+            $filterValues = $filterValues_['values'] ?? [];
+            /** @var array<int, string> $variables */
+            $variables = $filterValues_['variables'] ?? [];
+
+            /** @var Field $field */
             $field = $fields[$handle];
 
             $json = $field->isRelationship() && $field->get('max_items', 0) !== 1;
 
+            /** @var array<string, mixed> $cascade */
             $cascade = Cascade::toArray();
             foreach ($variables as $variable) {
                 if (! $parsed = VariableParser::parse($variable, $cascade)) {
                     continue;
                 }
 
-                $values = array_merge($values, $parsed);
+                $filterValues = array_merge($filterValues, $parsed);
             }
 
             // If we have no values, ignore the filter
-            if (! $values) {
+            if (! $filterValues) {
                 continue;
             }
 
-            $query->where(function ($query) use ($json, $handle, $operator, $values) {
-                foreach ($values as $i => $value) {
+            /** @phpstan-ignore argument.type */
+            $query->where(function ($query) use ($json, $handle, $operator, $filterValues): void {
+                foreach ($filterValues as $i => $value) {
                     if ($json) {
                         $method = $operator === '='
                             ? ($i ? 'orWhereJsonContains' : 'whereJsonContains')
@@ -61,20 +94,27 @@ class FilterBuilder extends Scope
         }
     }
 
-    protected function fields($collections)
+    /**
+     * @param  array<int, string>  $collections
+     * @return \Illuminate\Support\Collection<string, Field>
+     */
+    protected function fields(array $collections): \Illuminate\Support\Collection
     {
+        /** @phpstan-ignore return.type */
         return collect([
             'id' => new Field('id', [
                 'display' => 'ID',
                 'type' => 'text',
             ]),
         ])->merge(collect(Arr::wrap($collections))
-            ->flatMap(function ($collection) {
-                return Collection::findByHandle($collection)->entryBlueprints();
+            ->flatMap(function (string $collection) {
+                $col = Collection::findByHandle($collection);
+
+                return $col ? $col->entryBlueprints() : collect();
             })
             ->flatMap(function ($blueprint) {
                 return $blueprint
-                    ->fields()
+                    ->fields() /** @phpstan-ignore method.nonObject */
                     ->all()
                     ->filter->isFilterable();
             }));

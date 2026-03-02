@@ -1,7 +1,10 @@
 node_modules
 vendor
-mix-manifest.json
-public/hot
-composer.lock
 .idea
-.phpunit.cache
+.phpstan-cache/
+.claude/
+.claude-cbox/
+.playwright-mcp/
+storage/
+composer.lock
+package-lock.json
