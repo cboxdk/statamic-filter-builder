@@ -76,12 +76,8 @@ function onAdd(handle) {
 </script>
 
 <style>
-.filter_builder-fieldtype {
-    .publish-fields {
-        padding: 0.5rem !important;
-    }
-    .form-group {
-        padding: 0.5rem !important;
-    }
+.filter_builder-fieldtype .replicator-set-body.publish-fields {
+    padding: 0.5rem;
+    gap: 0.5rem;
 }
 </style>
